@@ -9,6 +9,7 @@
       <nav class="menu">
         <button :class="['menu-item', { active: activeTab === 'dashboard' }]" @click="activeTab = 'dashboard'">Pulpit</button>
         <button :class="['menu-item', { active: activeTab === 'codes' }]" @click="activeTab = 'codes'">Kody dostępu</button>
+        <button :class="['menu-item', { active: activeTab === 'residents' }]" @click="activeTab = 'residents'">Mieszkańcy</button>
         <button :class="['menu-item', { active: activeTab === 'reports' }]" @click="activeTab = 'reports'">
           Zgłoszenia
           <span v-if="newIssuesCount > 0" class="notif-badge">{{ newIssuesCount }}</span>
@@ -87,6 +88,180 @@
         </div>
       </div>
 
+      <div v-else-if="activeTab === 'residents'" class="tab-content fade-in">
+        <h1 class="page-title">Mieszkańcy</h1>
+        <p class="description">Wystaw fakturę za zużycie wody i prądu dla wybranego mieszkańca.</p>
+
+        <div class="card">
+          <h3>Lista mieszkańców</h3>
+          <div v-if="residents.length === 0" class="empty-state">Brak mieszkańców.</div>
+          <table v-else class="codes-table">
+            <thead>
+              <tr>
+                <th>Mieszkanie</th>
+                <th>Imię i nazwisko</th>
+                <th>E-mail</th>
+                <th>Saldo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in residents" :key="r.id">
+                <td>{{ r.flat_number }}</td>
+                <td>{{ r.first_name }} {{ r.last_name }}</td>
+                <td>{{ r.email }}</td>
+                <td>{{ formatMoney(r.balance) }} PLN</td>
+                <td>
+                  <button class="btn-primary btn-sm" @click="openInvoiceForm(r)">
+                    Generuj fakturę
+                  </button>
+                  <button class="btn-secondary btn-sm" @click="openHistory(r)">
+                    Historia
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="invoiceTarget" class="card">
+          <h3>
+            Nowa faktura dla
+            <span class="hl">{{ invoiceTarget.first_name }} {{ invoiceTarget.last_name }}</span>
+            (mieszkanie {{ invoiceTarget.flat_number }})
+          </h3>
+
+          <div class="invoice-grid">
+            <div class="invoice-col">
+              <h4>Woda</h4>
+              <div class="form-group">
+                <label>Zużycie (m³)</label>
+                <input type="number" min="0" step="0.001" v-model.number="invoiceForm.waterQty" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label>Cena za m³ (PLN)</label>
+                <input type="number" min="0" step="0.01" v-model.number="invoiceForm.waterPrice" class="input-field" />
+              </div>
+              <p class="line-total">Razem: <strong>{{ formatMoney(waterAmount) }} PLN</strong></p>
+            </div>
+
+            <div class="invoice-col">
+              <h4>Prąd</h4>
+              <div class="form-group">
+                <label>Zużycie (kWh)</label>
+                <input type="number" min="0" step="0.001" v-model.number="invoiceForm.energyQty" class="input-field" />
+              </div>
+              <div class="form-group">
+                <label>Cena za kWh (PLN)</label>
+                <input type="number" min="0" step="0.0001" v-model.number="invoiceForm.energyPrice" class="input-field" />
+              </div>
+              <p class="line-total">Razem: <strong>{{ formatMoney(energyAmount) }} PLN</strong></p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label>Termin płatności</label>
+              <input type="date" v-model="invoiceForm.dueDate" class="input-field" />
+            </div>
+          </div>
+
+          <p class="invoice-summary">
+            Suma do zapłaty: <strong>{{ formatMoney(totalInvoice) }} PLN</strong>
+          </p>
+
+          <div class="form-row">
+            <button class="btn-primary" :disabled="busy || totalInvoice <= 0" @click="submitInvoice">
+              {{ busy ? 'Wystawianie...' : 'Wystaw fakturę' }}
+            </button>
+            <button class="btn-secondary" @click="invoiceTarget = null">Anuluj</button>
+          </div>
+        </div>
+
+        <div v-if="historyTarget" class="card">
+          <div class="card-head">
+            <h3>
+              Historia opłat —
+              <span class="hl">{{ historyTarget.first_name }} {{ historyTarget.last_name }}</span>
+              (mieszkanie {{ historyTarget.flat_number }})
+            </h3>
+            <button class="btn-link" @click="closeHistory">Zamknij</button>
+          </div>
+
+          <h4>Faktury</h4>
+          <div v-if="historyInvoices.length === 0" class="empty-state">Brak faktur.</div>
+          <table v-else class="codes-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Wystawiono</th><th>Typ</th><th>Zużycie</th>
+                <th>Kwota</th><th>Termin</th><th>Odsetki</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="inv in historyInvoices" :key="inv.id">
+                <td>#{{ inv.id }}</td>
+                <td>{{ inv.issue_date }}</td>
+                <td>{{ inv.type === 'water' ? 'Woda' : 'Prąd' }}</td>
+                <td>
+                  <template v-if="inv.quantity">
+                    {{ inv.quantity }} {{ inv.type === 'water' ? 'm³' : 'kWh' }}
+                    × {{ inv.unit_price }}
+                  </template>
+                  <template v-else>–</template>
+                </td>
+                <td>{{ formatMoney(inv.amount) }} PLN</td>
+                <td>{{ inv.due_date }}</td>
+                <td>{{ formatMoney(inv.late_fee) }} PLN</td>
+                <td><span :class="['status-pill', inv.status]">{{ inv.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style="margin-top: 24px;">Płatności</h4>
+          <div v-if="historyPayments.length === 0" class="empty-state">Brak płatności.</div>
+          <table v-else class="codes-table">
+            <thead>
+              <tr><th>ID</th><th>Data</th><th>Kwota</th><th>Metoda</th><th>Opis</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in historyPayments" :key="p.id">
+                <td>#{{ p.id }}</td>
+                <td>{{ formatDate(p.created_at) }}</td>
+                <td>{{ formatMoney(p.amount) }} PLN</td>
+                <td>{{ p.method }}</td>
+                <td>{{ p.description || '–' }}</td>
+                <td><span :class="['status-pill', p.status]">{{ p.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="lastIssuedInvoices.length > 0" class="card">
+          <h3>Ostatnio wystawione faktury</h3>
+          <table class="codes-table">
+            <thead>
+              <tr><th>ID</th><th>Typ</th><th>Zużycie</th><th>Kwota</th><th>Termin</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="inv in lastIssuedInvoices" :key="inv.id">
+                <td>#{{ inv.id }}</td>
+                <td>{{ inv.type === 'water' ? 'Woda' : 'Prąd' }}</td>
+                <td>
+                  <template v-if="inv.quantity">
+                    {{ inv.quantity }} {{ inv.type === 'water' ? 'm³' : 'kWh' }}
+                    × {{ inv.unit_price }} PLN
+                  </template>
+                  <template v-else>–</template>
+                </td>
+                <td>{{ formatMoney(inv.amount) }} PLN</td>
+                <td>{{ inv.due_date }}</td>
+                <td>{{ inv.status }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div v-else-if="activeTab === 'reports'" class="tab-content fade-in">
         <h1 class="page-title">Zgłoszone usterki</h1>
         <p class="description">Lista problemów zgłoszonych przez mieszkańców.</p>
@@ -126,23 +301,155 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { AnnouncementsApi, CodesApi, IssuesApi } from '@/api/endpoints'
-import type { Announcement, Issue, IssueStatus, VerificationCode } from '@/api/types'
+import {
+  AnnouncementsApi,
+  CodesApi,
+  InvoicesApi,
+  IssuesApi,
+  PaymentsApi,
+  UsersApi,
+} from '@/api/endpoints'
+import type {
+  Announcement,
+  Invoice,
+  InvoiceItemInput,
+  Issue,
+  IssueStatus,
+  Payment,
+  ResidentSummary,
+  VerificationCode,
+} from '@/api/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const activeTab = ref<'dashboard' | 'codes' | 'reports'>('dashboard')
+const activeTab = ref<'dashboard' | 'codes' | 'residents' | 'reports'>('dashboard')
 const busy = ref(false)
 
 const announcements = ref<Announcement[]>([])
 const codes = ref<VerificationCode[]>([])
 const issues = ref<Issue[]>([])
+const residents = ref<ResidentSummary[]>([])
+const lastIssuedInvoices = ref<Invoice[]>([])
 
 const newAnn = reactive({ title: '', content: '', notify_residents: false })
 const newCodeFlat = ref('')
 
+// Default tariffs (admin can override per-invoice).
+const DEFAULT_WATER_PRICE = 12.5
+const DEFAULT_ENERGY_PRICE = 0.95
+
+const invoiceTarget = ref<ResidentSummary | null>(null)
+const historyTarget = ref<ResidentSummary | null>(null)
+const historyInvoices = ref<Invoice[]>([])
+const historyPayments = ref<Payment[]>([])
+const invoiceForm = reactive({
+  waterQty: 0,
+  waterPrice: DEFAULT_WATER_PRICE,
+  energyQty: 0,
+  energyPrice: DEFAULT_ENERGY_PRICE,
+  dueDate: defaultDueDate(),
+})
+
 const newIssuesCount = computed(() => issues.value.filter((i) => i.status === 'new').length)
+
+const waterAmount = computed(() => round2(invoiceForm.waterQty * invoiceForm.waterPrice))
+const energyAmount = computed(() => round2(invoiceForm.energyQty * invoiceForm.energyPrice))
+const totalInvoice = computed(() => round2(waterAmount.value + energyAmount.value))
+
+function round2(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Math.round(n * 100) / 100
+}
+
+function formatMoney(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return '0.00'
+  const n = typeof v === 'string' ? parseFloat(v) : v
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00'
+}
+
+function defaultDueDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 14)
+  return d.toISOString().slice(0, 10)
+}
+
+function openInvoiceForm(r: ResidentSummary) {
+  invoiceTarget.value = r
+  historyTarget.value = null
+  invoiceForm.waterQty = 0
+  invoiceForm.waterPrice = DEFAULT_WATER_PRICE
+  invoiceForm.energyQty = 0
+  invoiceForm.energyPrice = DEFAULT_ENERGY_PRICE
+  invoiceForm.dueDate = defaultDueDate()
+  lastIssuedInvoices.value = []
+}
+
+async function openHistory(r: ResidentSummary) {
+  historyTarget.value = r
+  invoiceTarget.value = null
+  historyInvoices.value = []
+  historyPayments.value = []
+  try {
+    const [invs, pays] = await Promise.all([
+      InvoicesApi.list(r.id),
+      PaymentsApi.list(r.id),
+    ])
+    historyInvoices.value = invs
+    historyPayments.value = pays
+  } catch (e: any) {
+    alert(e?.response?.data?.detail || 'Nie udało się pobrać historii')
+  }
+}
+
+function closeHistory() {
+  historyTarget.value = null
+  historyInvoices.value = []
+  historyPayments.value = []
+}
+
+async function submitInvoice() {
+  if (!invoiceTarget.value) return
+  const items: InvoiceItemInput[] = []
+  if (invoiceForm.waterQty > 0) {
+    items.push({
+      type: 'water',
+      quantity: invoiceForm.waterQty,
+      unit_price: invoiceForm.waterPrice,
+      description: `Woda – ${invoiceForm.waterQty} m³`,
+    })
+  }
+  if (invoiceForm.energyQty > 0) {
+    items.push({
+      type: 'electricity',
+      quantity: invoiceForm.energyQty,
+      unit_price: invoiceForm.energyPrice,
+      description: `Prąd – ${invoiceForm.energyQty} kWh`,
+    })
+  }
+  if (items.length === 0) {
+    alert('Wpisz zużycie wody lub prądu.')
+    return
+  }
+  busy.value = true
+  try {
+    const created = await InvoicesApi.adminGenerate(invoiceTarget.value.id, {
+      items,
+      due_date: invoiceForm.dueDate || null,
+    })
+    lastIssuedInvoices.value = created
+    // Refresh resident balance shown in the table.
+    residents.value = await UsersApi.listResidents()
+    alert(`Wystawiono ${created.length} faktur(y) na łącznie ${formatMoney(
+      created.reduce((s, i) => s + Number(i.amount), 0),
+    )} PLN.`)
+    invoiceTarget.value = null
+  } catch (e: any) {
+    alert(e?.response?.data?.detail || 'Błąd wystawiania faktury')
+  } finally {
+    busy.value = false
+  }
+}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleString('pl-PL')
@@ -150,14 +457,16 @@ function formatDate(d: string) {
 
 async function loadAll() {
   try {
-    const [a, c, i] = await Promise.all([
+    const [a, c, i, r] = await Promise.all([
       AnnouncementsApi.list(),
       CodesApi.list(true),
       IssuesApi.list(),
+      UsersApi.listResidents(),
     ])
     announcements.value = a
     codes.value = c
     issues.value = i
+    residents.value = r
   } catch (e) {
     console.error('Load failed', e)
   }
@@ -274,4 +583,19 @@ onMounted(loadAll)
 .ann-head { display: flex; justify-content: space-between; align-items: center; }
 .fade-in { animation: fadeIn 0.3s ease-in-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; margin-top: 0; }
+.btn-secondary { background: #e2e8f0; color: #2d3748; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; margin-left: 8px; }
+.btn-secondary:hover { background: #cbd5e0; }
+.invoice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 16px; }
+.invoice-col { padding: 16px; background: #f7fafc; border-radius: 8px; border: 1px solid #edf2f7; }
+.invoice-col h4 { margin: 0 0 12px; color: #2d3748; }
+.line-total { margin: 8px 0 0; color: #4a5568; }
+.invoice-summary { margin: 12px 0; padding: 12px 16px; background: #ebf8f2; border: 1px solid #c6f6d5; border-radius: 6px; color: #22543d; font-size: 1.05rem; }
+.hl { color: #2f855a; }
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.card-head h3 { margin: 0; }
+.status-pill { padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+.status-pill.pending, .status-pill.initialized { background: #bee3f8; color: #2c5282; }
+.status-pill.paid, .status-pill.completed { background: #c6f6d5; color: #22543d; }
+.status-pill.cancelled, .status-pill.rejected { background: #e2e8f0; color: #4a5568; }
 </style>

@@ -89,6 +89,56 @@
         </div>
 
         <div class="card">
+          <h3>Faktury (woda i prąd)</h3>
+          <div v-if="invoices.length === 0" class="empty-state">Brak faktur.</div>
+          <table v-else class="payments-table">
+            <thead>
+              <tr>
+                <th>Wystawiono</th>
+                <th>Typ</th>
+                <th>Zużycie</th>
+                <th>Kwota</th>
+                <th>Termin</th>
+                <th>Odsetki</th>
+                <th>Razem</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="inv in invoices" :key="inv.id">
+                <td>{{ inv.issue_date }}</td>
+                <td>{{ inv.type === 'water' ? 'Woda' : 'Prąd' }}</td>
+                <td>
+                  <template v-if="inv.quantity">
+                    {{ inv.quantity }} {{ inv.type === 'water' ? 'm³' : 'kWh' }}
+                  </template>
+                  <template v-else>–</template>
+                </td>
+                <td>{{ formatMoney(inv.amount) }} zł</td>
+                <td>
+                  {{ inv.due_date }}
+                  <span v-if="inv.status === 'pending' && daysOverdue(inv) > 0" class="overdue">
+                    (+{{ daysOverdue(inv) }} dni)
+                  </span>
+                </td>
+                <td>{{ formatMoney(currentLateFee(inv)) }} zł</td>
+                <td><strong>{{ formatMoney(invoiceTotal(inv)) }} zł</strong></td>
+                <td><span :class="['status-pill', inv.status]">{{ inv.status }}</span></td>
+                <td>
+                  <button
+                    v-if="inv.status === 'pending'"
+                    class="btn-primary btn-sm"
+                    :disabled="busy"
+                    @click="payInvoice(inv)"
+                  >Zapłać</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
           <h3>Historia płatności</h3>
           <div v-if="payments.length === 0" class="empty-state">Brak transakcji.</div>
           <table v-else class="payments-table">
@@ -162,8 +212,17 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { AnnouncementsApi, IssuesApi, PaymentsApi } from '@/api/endpoints'
-import type { Announcement, Issue, IssueCategory, Payment, PaymentInitResponse } from '@/api/types'
+import { AnnouncementsApi, InvoicesApi, IssuesApi, PaymentsApi } from '@/api/endpoints'
+import type {
+  Announcement,
+  Invoice,
+  Issue,
+  IssueCategory,
+  Payment,
+  PaymentInitResponse,
+} from '@/api/types'
+
+const LATE_FEE_DAILY_RATE = 0.01 // mirror of backend constant
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -174,6 +233,7 @@ const busy = ref(false)
 const announcements = ref<Announcement[]>([])
 const issues = ref<Issue[]>([])
 const payments = ref<Payment[]>([])
+const invoices = ref<Invoice[]>([])
 const balance = ref<number>(0)
 
 const activePayment = ref<PaymentInitResponse | null>(null)
@@ -201,18 +261,65 @@ function formatMoney(v: number | string) {
 
 async function loadAll() {
   try {
-    const [a, b, p, i] = await Promise.all([
+    const [a, b, p, i, inv] = await Promise.all([
       AnnouncementsApi.list(),
       PaymentsApi.balance(),
       PaymentsApi.list(),
       IssuesApi.list(),
+      InvoicesApi.list(),
     ])
     announcements.value = a
     balance.value = typeof b.balance === 'string' ? parseFloat(b.balance) : b.balance
     payments.value = p
     issues.value = i
+    invoices.value = inv
   } catch (e) {
     console.error(e)
+  }
+}
+
+function daysOverdue(inv: Invoice): number {
+  const due = new Date(inv.due_date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diff = Math.floor((today.getTime() - due.getTime()) / 86400000)
+  return Math.max(diff, 0)
+}
+
+function currentLateFee(inv: Invoice): number {
+  if (inv.status !== 'pending') {
+    return Number(inv.late_fee) || 0
+  }
+  const base = Number(inv.amount)
+  const days = daysOverdue(inv)
+  return Math.round(base * LATE_FEE_DAILY_RATE * days * 100) / 100
+}
+
+function invoiceTotal(inv: Invoice): number {
+  return Math.round((Number(inv.amount) + currentLateFee(inv)) * 100) / 100
+}
+
+async function payInvoice(inv: Invoice) {
+  if (!confirm(
+    `Zapłacić fakturę #${inv.id}?\n` +
+    `Kwota: ${formatMoney(inv.amount)} zł\n` +
+    `Odsetki za zwłokę: ${formatMoney(currentLateFee(inv))} zł\n` +
+    `Razem: ${formatMoney(invoiceTotal(inv))} zł`,
+  )) return
+  busy.value = true
+  try {
+    const res = await InvoicesApi.pay(inv.id, 'blik')
+    alert(
+      `Opłacono fakturę #${res.invoice_id}.\n` +
+      `Kwota bazowa: ${formatMoney(res.base_amount)} zł\n` +
+      `Odsetki (${res.days_overdue} dni): ${formatMoney(res.late_fee)} zł\n` +
+      `Razem: ${formatMoney(res.total_paid)} zł`,
+    )
+    await loadAll()
+  } catch (e: any) {
+    alert(e?.response?.data?.detail || 'Błąd płatności')
+  } finally {
+    busy.value = false
   }
 }
 
@@ -352,4 +459,8 @@ textarea.input-field { min-height: 120px; resize: vertical; }
 .block { display: block; margin-top: 10px; color: #a0aec0; }
 .fade-in { animation: fadeIn 0.3s ease-in-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+.overdue { color: #c53030; font-weight: 600; font-size: 0.85rem; margin-left: 4px; }
+.status-pill.pending { background: #bee3f8; color: #2c5282; }
+.status-pill.paid { background: #c6f6d5; color: #22543d; }
 </style>

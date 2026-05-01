@@ -2,11 +2,15 @@ import { apiClient } from './client'
 import type {
   Announcement,
   CurrentUser,
+  Invoice,
+  InvoiceGenerateRequest,
+  InvoicePayResponse,
   Issue,
   IssueCategory,
   IssueStatus,
   Payment,
   PaymentInitResponse,
+  ResidentSummary,
   TokenPair,
   VerificationCode,
 } from './types'
@@ -108,7 +112,10 @@ export const PaymentsApi = {
   balance: () =>
     apiClient.get<{ balance: string | number; currency: string }>('/payments/balance').then((r) => r.data),
 
-  list: () => apiClient.get<Payment[]>('/payments').then((r) => r.data),
+  list: (resident_id?: number) =>
+    apiClient
+      .get<Payment[]>('/payments', { params: resident_id ? { resident_id } : {} })
+      .then((r) => r.data),
 
   init: (amount: number, description?: string) =>
     apiClient
@@ -126,4 +133,28 @@ export const PaymentsApi = {
 
   cancel: (payment_id: number) =>
     apiClient.post<Payment>(`/payments/${payment_id}/cancel`).then((r) => r.data),
+}
+
+// --- Users (admin) ---
+export const UsersApi = {
+  listResidents: () =>
+    apiClient.get<ResidentSummary[]>('/users/residents').then((r) => r.data),
+}
+
+// --- Invoices ---
+export const InvoicesApi = {
+  list: (resident_id?: number) =>
+    apiClient
+      .get<Invoice[]>('/invoices', { params: resident_id ? { resident_id } : {} })
+      .then((r) => r.data),
+
+  adminGenerate: (resident_id: number, payload: InvoiceGenerateRequest) =>
+    apiClient
+      .post<Invoice[]>(`/invoices/admin/generate/${resident_id}`, payload)
+      .then((r) => r.data),
+
+  pay: (invoice_id: number, method: 'blik' | 'transfer' = 'blik') =>
+    apiClient
+      .post<InvoicePayResponse>(`/invoices/${invoice_id}/pay`, { method })
+      .then((r) => r.data),
 }

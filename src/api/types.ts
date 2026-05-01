@@ -91,3 +91,61 @@ export interface PaymentInitResponse {
   status: PaymentStatus
   redirect_url: string | null
 }
+
+export interface ResidentSummary {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  role: 'resident'
+  is_active: boolean
+  flat_number: string
+  balance: string | number
+  created_at: string
+}
+
+export type InvoiceType = 'water' | 'electricity'
+export type InvoiceStatus = 'pending' | 'paid' | 'cancelled'
+
+export interface Invoice {
+  id: number
+  type: InvoiceType
+  amount: string | number
+  quantity: string | number | null
+  unit_price: string | number | null
+  late_fee: string | number
+  issue_date: string
+  due_date: string
+  status: InvoiceStatus
+  paid_at: string | null
+  description: string | null
+  resident_id: number
+  payment_id: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InvoiceItemInput {
+  type: InvoiceType
+  quantity?: number
+  unit_price?: number
+  amount?: number
+  description?: string | null
+}
+
+export interface InvoiceGenerateRequest {
+  items: InvoiceItemInput[]
+  issue_date?: string | null
+  due_date?: string | null
+}
+
+export interface InvoicePayResponse {
+  invoice_id: number
+  base_amount: string | number
+  late_fee: string | number
+  days_overdue: number
+  total_paid: string | number
+  payment_id: number
+  status: InvoiceStatus
+}
