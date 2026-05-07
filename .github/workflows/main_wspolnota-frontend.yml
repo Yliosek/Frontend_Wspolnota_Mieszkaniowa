@@ -29,8 +29,9 @@ jobs:
           npm install
           npm run build
 
-      - name: Zip dist for deployment
+      - name: Prepare and zip dist for deployment
         run: |
+          echo '{"name":"frontend","version":"1.0.0","scripts":{"start":"npx serve -s . -l 8080"}}' > dist/package.json
           cd dist
           zip -r ../deploy.zip .
 
