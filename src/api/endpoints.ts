@@ -11,10 +11,14 @@ import type {
   Payment,
   PaymentInitResponse,
   ResidentSummary,
-  LoginResponse,
   TokenPair,
   VerificationCode,
 } from './types'
+
+// Some CI builds may run against an older types file that doesn't export
+// `LoginResponse`. Provide a local alias so the API typings remain stable
+// regardless of which commit GitHub Actions checks out.
+type LoginResponse = TokenPair & { force_password_change?: boolean }
 
 // --- Auth ---
 export const AuthApi = {
