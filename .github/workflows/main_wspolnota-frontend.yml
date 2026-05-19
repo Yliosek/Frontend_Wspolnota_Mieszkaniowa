@@ -1,0 +1,57 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy Node.js app to Azure Web App - wspolnota-frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+
+      - name: npm install and build
+        run: |
+          npm install
+          npm run build
+
+      - name: Prepare and zip dist for deployment
+        run: |
+          # 1. Tworzymy plik .deployment - to on mówi usłudze Azure "NIE BUDUJ TEGO, tylko wypakuj" (zastępuje klikanie w portalu)
+          echo "[config]" > dist/.deployment
+          echo "SCM_DO_BUILD_DURING_DEPLOYMENT=false" >> dist/.deployment
+          
+          # 2. Twój oryginalny package.json, żeby serwer Azure wiedział, jak uruchomić aplikację
+          echo '{"name":"frontend","version":"1.0.0","scripts":{"start":"npx serve -s . -l 8080"}}' > dist/package.json
+          
+          # 3. Zmiana katalogu i pakowanie plików
+          cd dist
+          zip -r ../deploy.zip .
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_6B079767F9D34B329CDF74FB039431C9 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_16FA21EF9EDD45899FE83743C1AB4CEE }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_72844B2EAA7443768056075757DCC083 }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'wspolnota-frontend'
+          slot-name: 'Production'
+          package: deploy.zip
