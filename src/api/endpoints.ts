@@ -11,6 +11,7 @@ import type {
   Payment,
   PaymentInitResponse,
   ResidentSummary,
+  LoginResponse,
   TokenPair,
   VerificationCode,
 } from './types'
@@ -18,7 +19,7 @@ import type {
 // --- Auth ---
 export const AuthApi = {
   login: (email: string, password: string) =>
-    apiClient.post<TokenPair>('/auth/login', { email, password }).then((r) => r.data),
+    apiClient.post<LoginResponse>('/auth/login', { email, password }).then((r) => r.data),
 
   register: (payload: {
     email: string
@@ -139,6 +140,21 @@ export const PaymentsApi = {
 export const UsersApi = {
   listResidents: () =>
     apiClient.get<ResidentSummary[]>('/users/residents').then((r) => r.data),
+
+  createPasswordResetRequest: (email: string, flat_number: string) =>
+    apiClient
+      .post<{ message: string }>('/users/password-reset-requests', { email, flat_number })
+      .then((r) => r.data),
+
+  deactivateResident: (resident_id: number) =>
+    apiClient
+      .post<{ message: string }>(`/users/residents/${resident_id}/deactivate`)
+      .then((r) => r.data),
+
+  resetResidentPassword: (resident_id: number) =>
+    apiClient
+      .post<{ message: string }>(`/users/residents/${resident_id}/reset-password`)
+      .then((r) => r.data),
 }
 
 // --- Invoices ---
@@ -153,8 +169,8 @@ export const InvoicesApi = {
       .post<Invoice[]>(`/invoices/admin/generate/${resident_id}`, payload)
       .then((r) => r.data),
 
-  pay: (invoice_id: number, method: 'blik' | 'transfer' = 'blik') =>
+  pay: (invoice_id: number, payload: { method?: 'blik' | 'transfer'; existing_payment_id?: number } = { method: 'blik' }) =>
     apiClient
-      .post<InvoicePayResponse>(`/invoices/${invoice_id}/pay`, { method })
+      .post<InvoicePayResponse>(`/invoices/${invoice_id}/pay`, payload)
       .then((r) => r.data),
 }
