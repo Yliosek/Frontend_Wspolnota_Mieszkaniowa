@@ -37,3 +37,8 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Zmienne środowiskowe (Env files)
+.env
+.env.*
+!.env.example
