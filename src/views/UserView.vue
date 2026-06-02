@@ -290,7 +290,6 @@
             {{ passwordChangeMsg }}
           </div>
         </div>
-        <!-- payment confirmation modal removed to fix template syntax; will reintroduce later -->
       </div>
     </main>
   </div>
@@ -312,7 +311,7 @@ import type {
   PaymentInitResponse,
 } from '@/api/types'
 
-const LATE_FEE_DAILY_RATE = 0.01 // mirror of backend constant
+const LATE_FEE_DAILY_RATE = 0.01
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -386,7 +385,6 @@ async function loadAll() {
   }
 }
 
-// Refresh data when switching to payments or dashboard tab
 watch(activeTab, async (newTab) => {
   if (newTab === 'dashboard' || newTab === 'payments') {
     await loadAll()
@@ -422,7 +420,6 @@ async function payInvoice(inv: Invoice) {
   payMsg.value = ''
   payError.value = false
   if (!inv) return
-  // Start a payment flow for this single invoice (BLIK)
   payConfirmationTarget.value = inv
   await startPayment(Number(invoiceTotal(inv)), `Invoice #${inv.id}`)
 }
@@ -521,12 +518,10 @@ async function confirmBlik() {
     if (result.status === 'completed') {
       paymentMsg.value = 'Płatność zakończona pomyślnie!'
       paymentError.value = false
-      // If we're paying a specific invoice, attach the payment to that invoice
       if (payConfirmationTarget.value) {
         try {
           await InvoicesApi.pay(payConfirmationTarget.value.id, { method: 'blik', existing_payment_id: result.id })
         } catch (err: any) {
-          // log but continue
           paymentMsg.value = err?.response?.data?.detail || paymentMsg.value
           paymentError.value = true
         }
@@ -591,7 +586,6 @@ async function handleChangePassword() {
 function extractServerMessage(detail: any): string | null {
   if (!detail) return null
   if (typeof detail === 'string') {
-    // Remove common Pydantic prefixes like "Value error, ..."
     const parts = detail.split(',').map((s) => s.trim())
     const first = parts[0] ?? ''
     if (parts.length > 1 && /value error/i.test(first)) return parts.slice(1).join(', ').trim()
@@ -627,8 +621,9 @@ onMounted(loadAll)
 </script>
 
 <style scoped>
-.user-layout { position: relative; min-height: 100vh; background-color: #f4f7f6; }
-.sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background-color: #2c3e50; color: white; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
+/* Base styles - zamieniono min-height: 100vh na 100dvh dla lepszej obsługi urządzeń mobilnych */
+.user-layout { position: relative; min-height: 100dvh; background-color: #f4f7f6; }
+.sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100dvh; background-color: #2c3e50; color: white; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
 .brand { padding: 25px 20px; background-color: #233140; text-align: center; }
 .brand h2 { margin: 0; font-size: 1.4rem; color: #42b983; }
 .brand-sub { color: #a0aec0; font-size: 0.8rem; margin: 4px 0 0; }
@@ -636,13 +631,13 @@ onMounted(loadAll)
 .menu-item { background: transparent; color: #a0aec0; border: none; padding: 15px 25px; text-align: left; font-size: 1.05rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; border-left: 4px solid transparent; }
 .menu-item:hover { background-color: #34495e; color: white; }
 .menu-item.active { background-color: #34495e; color: white; border-left-color: #42b983; }
-.bottom-action { padding: 20px; }
+.bottom-action { padding: 20px; margin-top: auto; }
 .btn-logout { width: 100%; background: transparent; color: #e2e8f0; border: 1px solid #718096; padding: 10px; border-radius: 6px; cursor: pointer; }
 .btn-logout:hover { background: #e53e3e; border-color: #e53e3e; color: white; }
 .content-area { margin-left: 260px; padding: 40px; overflow-y: auto; }
 .page-title { margin-top: 0; color: #1a202c; font-size: 2rem; margin-bottom: 10px; }
 .description { color: #718096; margin-bottom: 30px; }
-  .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); max-width: 100%; margin-bottom: 20px; }
+.card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); max-width: 100%; margin-bottom: 20px; }
 .stats-grid { display: flex; gap: 20px; max-width: 800px; margin-bottom: 30px; flex-wrap: wrap; }
 .stat-card { background: white; flex: 1; min-width: 200px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); text-align: center; }
 .stat-number { font-size: 2.2rem; font-weight: bold; color: #e53e3e; margin: 10px 0 0 0; }
@@ -679,12 +674,12 @@ textarea.input-field { min-height: 120px; resize: vertical; }
 .status-pill.completed, .status-pill.completed { background: #c6f6d5; color: #22543d; }
 .status-pill.rejected, .status-pill.cancelled { background: #e2e8f0; color: #4a5568; }
 .status-pill.initialized, .status-pill.pending { background: #bee3f8; color: #2c5282; }
-  .payments-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .payments-table th, .payments-table td { overflow-wrap: anywhere; white-space: normal; }
-  .payments-table th:nth-child(1), .payments-table td:nth-child(1) { width: 11%; }
-  .payments-table th:nth-child(2), .payments-table td:nth-child(2) { width: 8%; }
-  .payments-table th:nth-child(5), .payments-table td:nth-child(5) { width: 13%; }
-  .payments-table th:nth-child(7), .payments-table td:nth-child(7) { width: 12%; }
+.payments-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.payments-table th, .payments-table td { overflow-wrap: anywhere; white-space: normal; }
+.payments-table th:nth-child(1), .payments-table td:nth-child(1) { width: 11%; }
+.payments-table th:nth-child(2), .payments-table td:nth-child(2) { width: 8%; }
+.payments-table th:nth-child(5), .payments-table td:nth-child(5) { width: 13%; }
+.payments-table th:nth-child(7), .payments-table td:nth-child(7) { width: 12%; }
 .payments-table th, .payments-table td { padding: 8px 12px; border-bottom: 1px solid #edf2f7; text-align: left; font-size: 0.95rem; }
 .block { display: block; margin-top: 10px; color: #a0aec0; }
 .password-wrapper { position: relative; display: flex; }
@@ -700,190 +695,6 @@ textarea.input-field { min-height: 120px; resize: vertical; }
 .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 .overdue { color: #c53030; font-weight: 600; font-size: 0.85rem; margin-left: 4px; }
 .status-paid { color: #2f855a; font-weight: 600; font-size: 0.85rem; }
-
-/* Responsywność: mobile devices */
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    width: 100%;
-    height: auto;
-    max-height: 60vh;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    flex-direction: row;
-    flex-wrap: wrap;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-  .brand {
-    flex: 0 0 100%;
-    padding: 15px 20px;
-  }
-  .brand h2 {
-    font-size: 1.2rem;
-  }
-  .menu {
-    flex: 0 0 100%;
-    flex-direction: row;
-    padding: 0;
-    max-height: none;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 0;
-  }
-  .menu-item {
-    flex: 0 0 auto;
-    padding: 10px 15px;
-    font-size: 0.85rem;
-    border-left: none;
-    border-bottom: 3px solid transparent;
-    white-space: nowrap;
-  }
-  .menu-item.active {
-    border-left: none;
-    border-bottom-color: #42b983;
-  }
-  .bottom-action {
-    flex: 0 0 100%;
-    padding: 12px 20px;
-    border-top: 1px solid #34495e;
-  }
-  .btn-logout {
-    font-size: 0.85rem;
-    padding: 8px;
-  }
-  .content-area {
-    margin-left: 0;
-    margin-top: 120px;
-    padding: 20px;
-  }
-  .page-title {
-    font-size: 1.5rem;
-  }
-  .card {
-    padding: 20px;
-    margin-bottom: 15px;
-  }
-  .stats-grid {
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  .stat-card {
-    min-width: 100%;
-    padding: 15px;
-  }
-  .stat-number {
-    font-size: 1.8rem;
-  }
-  .payments-table {
-    font-size: 0.8rem;
-  }
-  .payments-table th,
-  .payments-table td {
-    padding: 6px 4px;
-  }
-  .btn-primary,
-  .btn-pay {
-    padding: 8px 12px;
-    font-size: 0.8rem;
-  }
-  .form-group {
-    margin-bottom: 12px;
-  }
-  label {
-    font-size: 0.9rem;
-    margin-bottom: 4px;
-  }
-  .input-field,
-  textarea.input-field {
-    font-size: 0.9rem;
-    padding: 8px;
-    min-height: 36px;
-  }
-  textarea.input-field {
-    min-height: 80px;
-  }
-}
-
-/* Landscape orientation on mobile */
-@media (max-width: 1024px) and (orientation: landscape) {
-  .sidebar {
-    max-height: 100vh;
-    flex-direction: column;
-    width: 200px;
-  }
-  .menu {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  .menu-item {
-    border-left: 4px solid transparent;
-    border-bottom: none;
-    padding: 12px 15px;
-  }
-  .menu-item.active {
-    border-bottom: none;
-    border-left-color: #42b983;
-  }
-  .bottom-action {
-    border-top: none;
-    border-left: 1px solid #34495e;
-    padding: 12px;
-  }
-  .content-area {
-    margin-left: 200px;
-    margin-top: 0;
-    padding: 20px;
-  }
-  .page-title {
-    font-size: 1.3rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .sidebar {
-    max-height: 50vh;
-  }
-  .content-area {
-    margin-top: 100px;
-    padding: 12px;
-  }
-  .card {
-    padding: 15px;
-  }
-  .page-title {
-    font-size: 1.2rem;
-    margin-bottom: 8px;
-  }
-  .description {
-    margin-bottom: 15px;
-    font-size: 0.85rem;
-  }
-  .payments-table {
-    font-size: 0.75rem;
-  }
-  .payments-table th,
-  .payments-table td {
-    padding: 4px 2px;
-  }
-  .btn-primary,
-  .btn-pay {
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    width: 100%;
-  }
-  .form-group {
-    margin-bottom: 10px;
-  }
-  label {
-    font-size: 0.8rem;
-  }
-}
-.status-pill.pending { background: #bee3f8; color: #2c5282; }
-.status-pill.paid { background: #c6f6d5; color: #22543d; }
-
 .payments-table td:last-child { width: 1%; white-space: nowrap; }
 .btn-primary.btn-sm { padding: 6px 8px; }
 .payments-table td.actions { width: 160px; white-space: nowrap; }
@@ -891,7 +702,9 @@ textarea.input-field { min-height: 120px; resize: vertical; }
 .btn-pay:hover:not(:disabled) { background: #268d56; }
 .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* ===== RESPONSYWNOŚĆ ===== */
+/* ===== RESPONSYWNOŚĆ POUKŁADANA W PRAWIDŁOWEJ KOLEJNOŚCI ===== */
+
+/* 1. Monitory i duże ekrany */
 @media (max-width: 1200px) {
   .content-area { padding: 30px; }
   .page-title { font-size: 1.6rem; }
@@ -899,9 +712,10 @@ textarea.input-field { min-height: 120px; resize: vertical; }
   .stats-grid { max-width: 100%; }
 }
 
+/* 2. Tablety - sidebar przyklejony do góry */
 @media (max-width: 1100px) {
   .user-layout { flex-direction: column; }
-  .sidebar { position: sticky; top: 0; width: 100%; height: auto; max-height: 100vh; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 20; }
+  .sidebar { position: sticky; top: 0; width: 100%; height: auto; max-height: 100dvh; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 20; }
   .brand { padding: 20px 15px; }
   .brand h2 { font-size: 1.1rem; }
   .menu { flex-direction: column; flex-wrap: nowrap; padding: 10px 0; overflow-y: visible; max-height: none; }
@@ -916,12 +730,9 @@ textarea.input-field { min-height: 120px; resize: vertical; }
   .stat-number { font-size: 1.8rem; }
   .balance-big { font-size: 1.8rem; }
   .payments-table th, .payments-table td { padding: 6px 8px; font-size: 0.8rem; }
-  /* Hide less important columns on narrower screens to avoid horizontal scrollbar */
   .payments-table th:nth-child(3), .payments-table td:nth-child(3),
   .payments-table th:nth-child(4), .payments-table td:nth-child(4),
-  .payments-table th:nth-child(6), .payments-table td:nth-child(6) {
-    display: none;
-  }
+  .payments-table th:nth-child(6), .payments-table td:nth-child(6) { display: none; }
   .btn-primary, .btn-logout { padding: 10px 15px; font-size: 0.9rem; }
   .code-input { letter-spacing: 4px; font-size: 1.1rem; }
   textarea.input-field { min-height: 100px; }
@@ -930,8 +741,34 @@ textarea.input-field { min-height: 120px; resize: vertical; }
   .input-field { font-size: 0.95rem; padding: 8px; }
 }
 
+/* 3. Telefony pionowo (portrait) */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; width: 100%; height: auto; max-height: 60dvh; top: 0; left: 0; right: 0; z-index: 1000; flex-direction: row; flex-wrap: wrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .brand { flex: 0 0 100%; padding: 15px 20px; }
+  .brand h2 { font-size: 1.2rem; }
+  .menu { flex: 0 0 100%; flex-direction: row; padding: 0; max-height: none; overflow-x: auto; overflow-y: hidden; gap: 0; }
+  .menu-item { flex: 0 0 auto; padding: 10px 15px; font-size: 0.85rem; border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .menu-item.active { border-left: none; border-bottom-color: #42b983; }
+  .bottom-action { flex: 0 0 100%; padding: 12px 20px; border-top: 1px solid #34495e; margin-top: 0; }
+  .btn-logout { font-size: 0.85rem; padding: 8px; }
+  .content-area { margin-left: 0; margin-top: 130px; padding: 20px; }
+  .page-title { font-size: 1.5rem; }
+  .card { padding: 20px; margin-bottom: 15px; }
+  .stats-grid { flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .stat-card { min-width: 100%; padding: 15px; }
+  .stat-number { font-size: 1.8rem; }
+  .payments-table { font-size: 0.8rem; }
+  .payments-table th, .payments-table td { padding: 6px 4px; }
+  .btn-primary, .btn-pay { padding: 8px 12px; font-size: 0.8rem; }
+  .form-group { margin-bottom: 12px; }
+  label { font-size: 0.9rem; margin-bottom: 4px; }
+  .input-field, textarea.input-field { font-size: 0.9rem; padding: 8px; min-height: 36px; }
+  textarea.input-field { min-height: 80px; }
+}
+
+/* 4. Małe telefony w pionie */
 @media (max-width: 700px) {
-  .content-area { padding: 15px; }
+  .content-area { padding: 15px; margin-top: 140px; }
   .page-title { font-size: 1.1rem; margin-bottom: 5px; }
   .description { font-size: 0.8rem; margin-bottom: 10px; }
   .card { padding: 15px; margin-bottom: 10px; }
@@ -946,10 +783,67 @@ textarea.input-field { min-height: 120px; resize: vertical; }
   .blik-form .actions { gap: 5px; flex-wrap: wrap; }
   .data-row { flex-direction: column; }
   .label { width: 100%; margin-bottom: 4px; }
-  /* For very small screens hide more columns */
   .payments-table th:nth-child(2), .payments-table td:nth-child(2),
-  .payments-table th:nth-child(5), .payments-table td:nth-child(5) {
-    display: none;
+  .payments-table th:nth-child(5), .payments-table td:nth-child(5) { display: none; }
+}
+@media (max-width: 480px) {
+  .sidebar { max-height: 50dvh; }
+  .content-area { margin-top: 130px; padding: 12px; }
+  .card { padding: 15px; }
+  .page-title { font-size: 1.2rem; margin-bottom: 8px; }
+  .description { margin-bottom: 15px; font-size: 0.85rem; }
+  .payments-table { font-size: 0.75rem; }
+  .payments-table th, .payments-table td { padding: 4px 2px; }
+  .btn-primary, .btn-pay { padding: 6px 10px; font-size: 0.75rem; width: 100%; }
+  .form-group { margin-bottom: 10px; }
+  label { font-size: 0.8rem; }
+}
+
+/* 5. TELEFONY W POZIOMIE (Landscape) - To naprawia ucianający się panel!
+   Musiało być umieszczone na samym dole by nadpisać zapytanie 'max-width: 1100px' */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; right: auto;
+    width: 220px;
+    height: 100dvh;
+    max-height: 100dvh;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-y: auto; /* Pozwala przewinąć menu, jeśli jest dużo elementów + wyloguj */
+    z-index: 1000;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
   }
+  .brand { flex: 0 0 auto; padding: 15px 20px; }
+  .brand h2 { font-size: 1.2rem; }
+  .menu {
+    flex: 1 0 auto;
+    flex-direction: column;
+    overflow-y: visible; /* Wyłączamy podwójny scroll - używamy scrolla w .sidebar */
+    overflow-x: hidden;
+    padding: 10px 0;
+  }
+  .menu-item {
+    border-left: 4px solid transparent;
+    border-bottom: none;
+    padding: 10px 15px;
+    white-space: normal;
+    font-size: 0.95rem;
+    flex: none;
+  }
+  .menu-item.active { border-bottom: none; border-left-color: #42b983; }
+  .bottom-action {
+    flex: 0 0 auto;
+    border-top: 1px solid #34495e;
+    border-left: none;
+    padding: 12px 20px;
+    margin-top: auto; /* Dopycha przycisk Wyloguj na sam dół (lub zaraz pod menu) */
+  }
+  .content-area {
+    margin-left: 220px;
+    margin-top: 0;
+    padding: 15px;
+  }
+  .page-title { font-size: 1.3rem; }
 }
 </style>
