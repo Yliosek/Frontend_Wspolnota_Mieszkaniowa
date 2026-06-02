@@ -799,51 +799,27 @@ textarea.input-field { min-height: 120px; resize: vertical; }
   label { font-size: 0.8rem; }
 }
 
-/* 5. TELEFONY W POZIOMIE (Landscape) - To naprawia ucianający się panel!
-   Musiało być umieszczone na samym dole by nadpisać zapytanie 'max-width: 1100px' */
+/* Landscape orientation on mobile - ZOPTYMALIZOWANE POD WYSOKOŚĆ */
 @media (max-width: 1024px) and (orientation: landscape) {
   .sidebar {
-    position: fixed;
-    top: 0; left: 0; right: auto;
-    width: 220px;
-    height: 100dvh;
-    max-height: 100dvh;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    overflow-y: auto; /* Pozwala przewinąć menu, jeśli jest dużo elementów + wyloguj */
-    z-index: 1000;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    position: fixed; top: 0; left: 0; right: auto; width: 200px; height: 100dvh; max-height: 100dvh;
+    flex-direction: column; flex-wrap: nowrap; overflow-y: auto; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.1);
   }
-  .brand { flex: 0 0 auto; padding: 15px 20px; }
-  .brand h2 { font-size: 1.2rem; }
-  .menu {
-    flex: 1 0 auto;
-    flex-direction: column;
-    overflow-y: visible; /* Wyłączamy podwójny scroll - używamy scrolla w .sidebar */
-    overflow-x: hidden;
-    padding: 10px 0;
-  }
-  .menu-item {
-    border-left: 4px solid transparent;
-    border-bottom: none;
-    padding: 10px 15px;
-    white-space: normal;
-    font-size: 0.95rem;
-    flex: none;
-  }
+  
+  /* Drastyczne zmniejszenie nagłówka w trybie poziomym */
+  .brand { flex: 0 0 auto; padding: 10px; }
+  .brand h2 { font-size: 1rem; }
+  .brand-sub { display: none; } /* Ukrywamy email użytkownika, bo zabiera cenne miejsce! */
+  
+  /* Ciaśniej ułożone przyciski */
+  .menu { flex: 1 0 auto; flex-direction: column; overflow-y: visible; overflow-x: hidden; padding: 5px 0; }
+  .menu-item { border-left: 4px solid transparent; border-bottom: none; padding: 8px 12px; white-space: normal; font-size: 0.85rem; flex: none; }
   .menu-item.active { border-bottom: none; border-left-color: #42b983; }
-  .bottom-action {
-    flex: 0 0 auto;
-    border-top: 1px solid #34495e;
-    border-left: none;
-    padding: 12px 20px;
-    margin-top: auto; /* Dopycha przycisk Wyloguj na sam dół (lub zaraz pod menu) */
-  }
-  .content-area {
-    margin-left: 220px;
-    margin-top: 0;
-    padding: 15px;
-  }
-  .page-title { font-size: 1.3rem; }
+  
+  .bottom-action { flex: 0 0 auto; border-top: 1px solid #34495e; border-left: none; padding: 8px 12px; margin-top: auto; }
+  .btn-logout { padding: 6px; font-size: 0.85rem; }
+  
+  .content-area { margin-left: 200px; margin-top: 0; padding: 15px; }
+  .page-title { font-size: 1.2rem; }
 }
 </style>
