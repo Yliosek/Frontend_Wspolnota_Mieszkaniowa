@@ -48,7 +48,10 @@
 
     <main class="content-area">
       <div v-if="activeTab === 'dashboard'" class="tab-content fade-in">
-        <h1 class="page-title">Pulpit Zarządzania</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1 class="page-title" style="margin: 0;">Pulpit Zarządzania</h1>
+          <button @click="loadAll" class="btn-refresh" :disabled="busy" title="Odśwież dane">🔄 Odśwież</button>
+        </div>
         <p class="description">Opublikuj komunikaty dla wszystkich mieszkańców.</p>
         <div v-if="adminMsg" :class="['status-box', adminError ? 'err' : 'ok']" style="margin-bottom:16px;">
           {{ adminMsg }}
@@ -759,17 +762,20 @@ function formatDate(d: string) {
 
 async function loadAll() {
   try {
+    // Load data in parallel first
     const [a, c, i, r] = await Promise.all([
       AnnouncementsApi.list(),
       CodesApi.list(true),
       IssuesApi.list(),
       UsersApi.listResidents(),
-      loadPasswordResets(),
     ])
     announcements.value = a
     codes.value = c
     issues.value = i
     residents.value = r
+    
+    // THEN load password resets (now residents data is available)
+    await loadPasswordResets()
   } catch (e) {
     console.error('Load failed', e)
   }
@@ -780,7 +786,7 @@ async function loadPasswordResets() {
     const response = await apiClient.get('/users/password-reset-requests')
     // Filter out reset requests for residents who are currently inactive
     const all = response.data || []
-    // Build a quick lookup by email (residents data should be loaded already in loadAll)
+    // Build a quick lookup by email (now residents data is guaranteed to be loaded)
     const activeEmails = new Set(residents.value.filter((r) => r.is_active).map((r) => r.email))
     const filtered = all.filter((req: any) => activeEmails.has(req.email))
     pendingPasswordResets.value = filtered
@@ -1168,6 +1174,10 @@ async function confirmDeleteCode() {
 
 .balance-owed { color: #c53030; font-weight: 700; }
 
+.btn-refresh { background: #4299e1; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background-color 0.2s; }
+.btn-refresh:hover:not(:disabled) { background: #3182ce; }
+.btn-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
 @media (max-width: 1100px) {
   .admin-layout { flex-direction: column; }
   .sidebar { position: sticky; top: 0; width: 100%; height: auto; max-height: 100vh; overflow-y: auto; z-index: 20; }
@@ -1196,4 +1206,196 @@ async function confirmDeleteCode() {
   .resident-inactive td { filter: grayscale(0.02); }
   .resident-inactive .btn-primary, .resident-inactive .btn-secondary, .resident-inactive .btn-danger { opacity: 0.85; }
   .resident-inactive .status-pill { opacity: 0.85; }
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .brand {
+    flex: 0 0 100%;
+    padding: 15px 20px;
+  }
+  .menu {
+    flex: 0 0 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0;
+  }
+  .menu-item {
+    flex: 0 0 auto;
+    padding: 12px 15px;
+    font-size: 0.85rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  .menu-item.active {
+    border-left: none;
+    border-bottom-color: #42b983;
+  }
+  .bottom-action {
+    flex: 0 0 100%;
+    padding: 12px 20px;
+    border-top: 1px solid #34495e;
+  }
+  .content-area {
+    margin-left: 0;
+    margin-top: 0;
+    padding: 15px;
+  }
+  .page-title {
+    font-size: 1.3rem;
+  }
+  .card {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .form-row .input-field {
+    width: 100%;
+  }
+  .codes-table,
+  .codes-table th,
+  .codes-table td {
+    font-size: 0.85rem;
+  }
+  .codes-table th,
+  .codes-table td {
+    padding: 8px 6px;
+  }
+  .resident-actions {
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
+  .resident-actions-cell {
+    min-width: auto;
+  }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-logout {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  .btn-primary.btn-sm,
+  .btn-secondary.btn-sm {
+    width: auto;
+  }
+  .notif-badge {
+    right: 12px;
+  }
+}
+
+@media (max-width: 768px) and (orientation: landscape) {
+  .sidebar {
+    flex-direction: column;
+    width: 200px;
+    height: 100vh;
+    position: fixed;
+    flex-wrap: nowrap;
+  }
+  .menu {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px 0;
+  }
+  .menu-item {
+    flex: none;
+    border-left: 4px solid transparent;
+    border-bottom: none;
+    padding: 12px 15px;
+    white-space: normal;
+    font-size: 0.9rem;
+  }
+  .menu-item.active {
+    border-bottom: none;
+    border-left-color: #42b983;
+  }
+  .bottom-action {
+    flex: none;
+    border-top: 1px solid #34495e;
+    border-left: none;
+  }
+  .content-area {
+    margin-left: 200px;
+    margin-top: 0;
+    padding: 15px;
+  }
+  .page-title {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    max-height: 50vh;
+  }
+  .content-area {
+    padding: 10px;
+  }
+  .page-title {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+  }
+  .description {
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+  }
+  .card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .card h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  .codes-table,
+  .codes-table th,
+  .codes-table td {
+    font-size: 0.75rem;
+  }
+  .codes-table th,
+  .codes-table td {
+    padding: 4px 3px;
+  }
+  .code-badge {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+  }
+  .form-group {
+    margin-bottom: 10px;
+  }
+  label {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .input-field,
+  textarea {
+    font-size: 0.85rem;
+    padding: 8px;
+  }
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .btn-logout {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+}
 </style>

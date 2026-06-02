@@ -183,9 +183,12 @@
         </p>
       </form>
 
-      <div v-if="statusMsg" :class="['status-box', isError ? 'err' : 'ok']">
-        {{ statusMsg }}
-      </div>
+        <div v-if="statusMsg" :class="['status-box', isError ? 'err' : 'ok']">
+          {{ statusMsg }}
+          <p v-if="!isError && !isRegistering && !isForgotPassword" style="margin: 8px 0 0; font-size: 0.9rem; font-weight: normal;">
+            💡 Jeśli admin resetuje Ci hasło, zaloguj się pustym polem (pozostaw puste) i nastaw nowe.
+          </p>
+        </div>
     </div>
   </div>
 </template>

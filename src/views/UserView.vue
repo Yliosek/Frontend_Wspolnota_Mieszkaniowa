@@ -136,6 +136,7 @@
                     :disabled="busy"
                     @click="payInvoice(inv)"
                   >Zapłać</button>
+                  <span v-else class="status-paid">Opłacone</span>
                 </td>
               </tr>
             </tbody>
@@ -698,6 +699,188 @@ textarea.input-field { min-height: 120px; resize: vertical; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .btn-sm { padding: 6px 12px; font-size: 0.85rem; }
 .overdue { color: #c53030; font-weight: 600; font-size: 0.85rem; margin-left: 4px; }
+.status-paid { color: #2f855a; font-weight: 600; font-size: 0.85rem; }
+
+/* Responsywność: mobile devices */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    max-height: 60vh;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    flex-direction: row;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .brand {
+    flex: 0 0 100%;
+    padding: 15px 20px;
+  }
+  .brand h2 {
+    font-size: 1.2rem;
+  }
+  .menu {
+    flex: 0 0 100%;
+    flex-direction: row;
+    padding: 0;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0;
+  }
+  .menu-item {
+    flex: 0 0 auto;
+    padding: 10px 15px;
+    font-size: 0.85rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  .menu-item.active {
+    border-left: none;
+    border-bottom-color: #42b983;
+  }
+  .bottom-action {
+    flex: 0 0 100%;
+    padding: 12px 20px;
+    border-top: 1px solid #34495e;
+  }
+  .btn-logout {
+    font-size: 0.85rem;
+    padding: 8px;
+  }
+  .content-area {
+    margin-left: 0;
+    margin-top: 120px;
+    padding: 20px;
+  }
+  .page-title {
+    font-size: 1.5rem;
+  }
+  .card {
+    padding: 20px;
+    margin-bottom: 15px;
+  }
+  .stats-grid {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    min-width: 100%;
+    padding: 15px;
+  }
+  .stat-number {
+    font-size: 1.8rem;
+  }
+  .payments-table {
+    font-size: 0.8rem;
+  }
+  .payments-table th,
+  .payments-table td {
+    padding: 6px 4px;
+  }
+  .btn-primary,
+  .btn-pay {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  .form-group {
+    margin-bottom: 12px;
+  }
+  label {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  .input-field,
+  textarea.input-field {
+    font-size: 0.9rem;
+    padding: 8px;
+    min-height: 36px;
+  }
+  textarea.input-field {
+    min-height: 80px;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .sidebar {
+    max-height: 100vh;
+    flex-direction: column;
+    width: 200px;
+  }
+  .menu {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .menu-item {
+    border-left: 4px solid transparent;
+    border-bottom: none;
+    padding: 12px 15px;
+  }
+  .menu-item.active {
+    border-bottom: none;
+    border-left-color: #42b983;
+  }
+  .bottom-action {
+    border-top: none;
+    border-left: 1px solid #34495e;
+    padding: 12px;
+  }
+  .content-area {
+    margin-left: 200px;
+    margin-top: 0;
+    padding: 20px;
+  }
+  .page-title {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    max-height: 50vh;
+  }
+  .content-area {
+    margin-top: 100px;
+    padding: 12px;
+  }
+  .card {
+    padding: 15px;
+  }
+  .page-title {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+  .description {
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+  }
+  .payments-table {
+    font-size: 0.75rem;
+  }
+  .payments-table th,
+  .payments-table td {
+    padding: 4px 2px;
+  }
+  .btn-primary,
+  .btn-pay {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    width: 100%;
+  }
+  .form-group {
+    margin-bottom: 10px;
+  }
+  label {
+    font-size: 0.8rem;
+  }
+}
 .status-pill.pending { background: #bee3f8; color: #2c5282; }
 .status-pill.paid { background: #c6f6d5; color: #22543d; }
 
